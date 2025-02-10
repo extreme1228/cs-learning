@@ -246,6 +246,14 @@ def make_averaged(original_function, samples_count=1000):
     """
     # BEGIN PROBLEM 8
     "*** YOUR CODE HERE ***"
+    def avg_function(*args):
+        sum_score = 0
+        cnt = 1
+        while cnt <= samples_count:
+            sum_score += original_function(*args)
+            cnt += 1
+        return sum_score / samples_count
+    return avg_function
     # END PROBLEM 8
 
 
@@ -260,6 +268,19 @@ def max_scoring_num_rolls(dice=six_sided, samples_count=1000):
     """
     # BEGIN PROBLEM 9
     "*** YOUR CODE HERE ***"
+    ans_dice_cnt = 1
+    ans_score = 0
+    now_dice_cnt = 1
+    while now_dice_cnt <= 10:
+        get_score = make_averaged(roll_dice,samples_count)
+        now_score = get_score(now_dice_cnt,dice)
+        # print(now_dice_cnt)
+        # print(now_score)
+        if now_score > ans_score:
+            ans_score = now_score
+            ans_dice_cnt = now_dice_cnt
+        now_dice_cnt += 1
+    return ans_dice_cnt
     # END PROBLEM 9
 
 
