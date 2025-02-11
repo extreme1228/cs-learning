@@ -199,6 +199,9 @@ def always_roll(n):
     assert n >= 0 and n <= 10
     # BEGIN PROBLEM 6
     "*** YOUR CODE HERE ***"
+    def roll_n(player_score,opponent_score):
+        return n
+    return roll_n
     # END PROBLEM 6
 
 
@@ -230,6 +233,11 @@ def is_always_roll(strategy, goal=GOAL):
     """
     # BEGIN PROBLEM 7
     "*** YOUR CODE HERE ***"
+    ans_set = set()
+    for i in range(0,goal,1):
+        for j in range(0,goal,1):
+            ans_set.add(strategy(i,j))
+    return len(ans_set) == 1
     # END PROBLEM 7
 
 
@@ -325,14 +333,23 @@ def boar_strategy(score, opponent_score, threshold=11, num_rolls=6):
     points, and returns NUM_ROLLS otherwise. Ignore score and Sus Fuss.
     """
     # BEGIN PROBLEM 10
-    return num_rolls  # Remove this line once implemented.
+    boar_brawl_score = boar_brawl(score,opponent_score)
+    if boar_brawl_score >= threshold:
+        return 0
+    else:
+        return num_rolls  
     # END PROBLEM 10
 
 
 def sus_strategy(score, opponent_score, threshold=11, num_rolls=6):
     """This strategy returns 0 dice when your score would increase by at least threshold."""
     # BEGIN PROBLEM 11
-    return num_rolls  # Remove this line once implemented.
+    sus_score = sus_update(0,score,opponent_score) - score
+    if sus_score >= threshold:
+        return 0
+    else :
+        return num_rolls
+    
     # END PROBLEM 11
 
 
