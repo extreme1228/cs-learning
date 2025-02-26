@@ -237,29 +237,39 @@ def minimum_mewtations(typed, source, limit):
     >>> minimum_mewtations("ckiteus", "kittens", big_limit) # ckiteus -> kiteus -> kitteus -> kittens
     3
     """
-    assert False, 'Remove this line'
-    if ___________: # Base cases should go here, you may add more base cases as needed.
+    if limit < 0: # Base cases should go here, you may add more base cases as needed.
         # BEGIN
         "*** YOUR CODE HERE ***"
+        return len(typed) + len(source) + 1
         # END
+    if len(typed) == 0:
+        return len(source)
+    if len(source) == 0:
+        return len(typed)
     # Recursive cases should go below here
-    if ___________: # Feel free to remove or add additional cases
+    if typed[0] == source[0]: # Feel free to remove or add additional cases
         # BEGIN
         "*** YOUR CODE HERE ***"
+        return minimum_mewtations(typed[1:],source[1:],limit)
         # END
     else:
-        add = ... # Fill in these lines
-        remove = ...
-        substitute = ...
+        add = minimum_mewtations(typed,source[1:],limit-1)
+        remove = minimum_mewtations(typed[1:],source,limit-1)
+        substitute = minimum_mewtations(typed[1:],source[1:],limit-1)
+        # print("add:",add)
+        # print("remove:",remove)
+        # print("substitute:",substitute)
         # BEGIN
         "*** YOUR CODE HERE ***"
+        return 1 + min(add,remove,substitute)
         # END
 
 
 def final_diff(typed, source, limit):
     """A diff function that takes in a string TYPED, a string SOURCE, and a number LIMIT.
     If you implement this function, it will be used."""
-    assert False, 'Remove this line to use your final_diff function.'
+    # assert False, 'Remove this line to use your final_diff function.'
+    return minimum_mewtations(typed,source,limit)
 
 FINAL_DIFF_LIMIT = 6 # REPLACE THIS WITH YOUR LIMIT
 
@@ -270,7 +280,7 @@ FINAL_DIFF_LIMIT = 6 # REPLACE THIS WITH YOUR LIMIT
 
 
 def report_progress(typed, source, user_id, upload):
-    """Upload a report of your id and progress so far to the multiplayer server.
+    """Upload a report of your id and progress so far to the multiplayer server.    
     Returns the progress so far.
 
     Arguments:
@@ -294,6 +304,16 @@ def report_progress(typed, source, user_id, upload):
     """
     # BEGIN PROBLEM 8
     "*** YOUR CODE HERE ***"
+    correct_num = 0
+    for index in range(len(typed)):
+        if typed[index] == source[index]:
+            correct_num += 1
+        else:
+            break
+    correct_ratio = correct_num / len(source)
+    res = {'id':user_id,'progress':correct_ratio}
+    upload(res)
+    return correct_ratio                  
     # END PROBLEM 8
 
 
@@ -316,6 +336,13 @@ def time_per_word(words, timestamps_per_player):
     """
     # BEGIN PROBLEM 9
     "*** YOUR CODE HERE ***"
+    time_list_per_player = []
+    for time_stamp in timestamps_per_player:
+        time_list = []
+        for i in range(1,len(time_stamp)):
+            time_list.append(time_stamp[i] - time_stamp[i-1])
+        time_list_per_player.append(time_list)
+    return match(words,time_list_per_player)
     # END PROBLEM 9
 
 
@@ -338,6 +365,18 @@ def fastest_words(match):
     word_indices = range(len(get_all_words(match)))    # contains an *index* for each word
     # BEGIN PROBLEM 10
     "*** YOUR CODE HERE ***"
+    fast_words_per_player = [[] for _ in range(len(player_indices))]
+    for word_index in range(len(word_indices)):
+        word = get_word(match,word_index)
+        min_player_index = -1
+        min_player_time = -1
+        for player_index in player_indices:
+            player_time = time(match,player_index,word_index)
+            if min_player_time == -1 or player_time < min_player_time:
+                min_player_time = player_time
+                min_player_index = player_index
+        fast_words_per_player[min_player_index].append(word)
+    return fast_words_per_player
     # END PROBLEM 10
 
 
