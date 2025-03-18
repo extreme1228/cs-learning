@@ -5,4 +5,5 @@
 ## LLM Learning
 * [SFT](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
 * [LLM knowlege](https://zhuanlan.zhihu.com/p/654910335)
-* [RLHF](https://medium.com/data-science/understand-reinforce-actor-critic-and-ppo-in-one-go-2569f520c066)
+* [RL from zero to PPO](https://medium.com/data-science/understand-reinforce-actor-critic-and-ppo-in-one-go-2569f520c066)
+* [Resoning Model(DeepSeek-r1)](https://sebastianraschka.com/blog/2025/understanding-reasoning-llms.html)
