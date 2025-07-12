@@ -1,6 +1,7 @@
 # cs-learning
 ## Python: 
 * [cs61a](https://cs61a.org/)
+* [cs224n](https://web.stanford.edu/class/cs224n/)
 
 ## LLM Learning
 * [SFT](https://cameronrwolfe.substack.com/p/understanding-and-using-supervised)
