@@ -1,6 +1,8 @@
 # cs-learning
 ## Python: 
 * [cs61a](https://cs61a.org/)
+
+## Deep Learning(LLM)
 * [cs224n](https://web.stanford.edu/class/cs224n/)
 
 ## LLM Learning
