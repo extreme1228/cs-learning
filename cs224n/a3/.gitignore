@@ -1,0 +1,6 @@
+outputs/
+runs/
+sanity_check_en_es_data/
+zh_en_data/
+model.bin.optim
+model.bin
