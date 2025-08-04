@@ -9,6 +9,9 @@ import utils
 import torch
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
+from models import GPT
+from trainer import Trainer,TrainerConfig
+from dataset import NameDataset,CharCorruptionDataset
 
 random.seed(0)
 
@@ -66,13 +69,14 @@ model = None
 if args.variant == 'vanilla':
     # TODO: [part c] Make some model here
     ### YOUR CODE HERE ###
-    pass
+    model = GPT(mconf).to(device)
     ### END YOUR CODE ###
 elif args.variant == 'rope':
     # TODO: [part g] Make some other model here
     # set mconf.rope parameter
     ### YOUR CODE HERE ###
-    pass
+    mconf.rope = True
+    model = GPT(mconf).to(device)
     ### END YOUR CODE ###
 else:
     raise ValueError("Unknown model variant")
@@ -102,7 +106,20 @@ if args.function == 'pretrain':
     # writer=writer
 
     ### YOUR CODE HERE ###
-    pass
+    pret_conf = TrainerConfig(
+        max_epochs=650,
+        batch_size=128,
+        learning_rate=args.pretrain_lr,
+        warmup_tokens=512*20,
+        final_tokens=650*len(pretrain_dataset)*block_size,
+        num_workers=0,
+        writer=writer,
+        ckpt_path=args.writing_params_path
+    )
+    pret_trainer = Trainer(model=model,train_dataset=pretrain_dataset,test_dataset=None,config=pret_conf)
+    pret_trainer.train()
+    pret_trainer.save_checkpoint()
+
     ### END YOUR CODE ###
 elif args.function == 'finetune':
     assert args.writing_params_path is not None
@@ -141,6 +158,29 @@ elif args.function == 'finetune':
     #     number of epochs for each case.
 
     ### YOUR CODE HERE ###
+    if args.reading_params_path is not None:
+        state_dict = torch.load(args.reading_params_path)
+        model.load_state_dict(state_dict=state_dict)
+        model.to(device)
+    finetune_data = open(args.finetune_corpus_path,encoding='utf-8').read()
+    finetune_dataset = NameDataset(pretraining_dataset=pretrain_dataset,data=finetune_data)
+
+    tconf = TrainerConfig(
+        max_epochs= 75 if args.reading_params_path is None else 10,
+        batch_size= 256,
+        learning_rate=args.finetune_lr,
+        lr_decay=True,
+        warmup_tokens=512*20,
+        final_tokens=200*len(pretrain_dataset)*block_size,
+        num_workers=0,
+        writer=writer,
+        ckpt_path=args.writing_params_path
+    )
+    trainer = Trainer(model=model,train_dataset=finetune_dataset,test_dataset=None,config=tconf)
+
+    trainer.train()
+
+    trainer.save_checkpoint()
     pass
     ### END YOUR CODE ###
 elif args.function == 'evaluate':

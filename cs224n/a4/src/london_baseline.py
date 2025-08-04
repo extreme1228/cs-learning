@@ -12,9 +12,14 @@ def main():
 
     # Compute accuracy in the range [0.0, 100.0]
     ### YOUR CODE HERE ###
-    pass
+    dev_file = 'birth_dev.tsv'
+    with open(dev_file,'r',encoding='utf-8') as f:
+        len_file = len(f.readlines())
+    
+    pred = ['London'] * len_file
+    total, correct = utils.evaluate_places(dev_file, pred)
     ### END YOUR CODE ###
-
+    accuracy = correct / total
     return accuracy
 
 if __name__ == '__main__':
