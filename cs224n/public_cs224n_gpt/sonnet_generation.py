@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import GPT2Tokenizer
 from einops import rearrange
+from evaluation import model_eval_sonnet
 
 from datasets import (
   SonnetsDataset,
@@ -61,7 +62,11 @@ class SonnetGPT(nn.Module):
     not just the distribution over next tokens for the last token!
     """
     ### YOUR CODE HERE
-    raise NotImplementedError
+    gpt_output = self.gpt(input_ids,attention_mask)
+    seq_token = gpt_output['last_hidden_state']
+    # logits = self.paraphrase_detection_head(last_token)
+    logits = self.gpt.hidden_state_to_token(seq_token)
+    return logits
 
 
   def get_device(self):
@@ -140,7 +145,7 @@ def train(args):
 
   # Create the held-out dataset: these only have the first 3 lines. Your job is to fill in the rest!
   held_out_sonnet_dataset = SonnetsDataset(args.held_out_sonnet_path)
-
+  dev_sonnet_dataset = SonnetsDataset(args.sonnet_dev_path)
   args = add_arguments(args)
   model = SonnetGPT(args)
   model = model.to(device)
@@ -148,6 +153,7 @@ def train(args):
   lr = args.lr
   optimizer = AdamW(model.parameters(), lr=lr)
 
+  best_dev_acc = 0
   # Run for the specified number of epochs.
   for epoch in range(args.epochs):
     model.train()
@@ -171,18 +177,30 @@ def train(args):
 
       train_loss += loss.item()
       num_batches += 1
+      
+    epoch_dev_acc = model_eval_sonnet(
+          model,
+          device,
+          dev_sonnet_dataset,
+          "data/TRUE_sonnets_held_out_dev.txt",
+          args.temperature,
+          args.top_p
+    )
+    print("dev acc",epoch_dev_acc)
+    if epoch_dev_acc > best_dev_acc:
+      best_dev_acc = epoch_dev_acc
+      save_model(model, optimizer, args, args.filepath)
 
     train_loss = train_loss / num_batches
     print(f"Epoch {epoch}: train loss :: {train_loss :.3f}.")
-    print('Generating several output sonnets...')
-    model.eval()
-    for batch in held_out_sonnet_dataset:
-      encoding = model.tokenizer(batch[1], return_tensors='pt', padding=True, truncation=True).to(device)
-      output = model.generate(encoding['input_ids'], temperature=args.temperature, top_p=args.top_p)
-      print(f'{batch[1]}{output[1]}\n\n')
+    # print('Generating several output sonnets...')
+    # model.eval()
+    # for batch in held_out_sonnet_dataset:
+    #   encoding = model.tokenizer(batch[1], return_tensors='pt', padding=True, truncation=True).to(device)
+    #   output = model.generate(encoding['input_ids'], temperature=args.temperature, top_p=args.top_p)
+    #   print(f'{batch[1]}{output[1]}\n\n')
 
-    # TODO: consider a stopping condition to prevent overfitting on the small dataset of sonnets.
-    save_model(model, optimizer, args, f'{epoch}_{args.filepath}')
+    
 
 
 @torch.no_grad()
@@ -221,6 +239,7 @@ def get_args():
 
   parser.add_argument("--sonnet_path", type=str, default="data/sonnets.txt")
   parser.add_argument("--held_out_sonnet_path", type=str, default="data/sonnets_held_out.txt")
+  parser.add_argument("--sonnet_dev_path",type=str,default="data/sonnets_held_out_dev.txt")
   parser.add_argument("--sonnet_out", type=str, default="predictions/generated_sonnets.txt")
 
   parser.add_argument("--seed", type=int, default=11711)

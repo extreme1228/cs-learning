@@ -43,8 +43,7 @@ class AdamW(Optimizer):
                 state = self.state[p]
 
                 # Access hyperparameters from the `group` dictionary.
-                alpha = group["lr"]
-
+                
 
                 ### TODO: Complete the implementation of AdamW here, reading and saving
                 ###       your state in the `state` dictionary above.
@@ -61,7 +60,30 @@ class AdamW(Optimizer):
                 ###
                 ###       Refer to the default project handout for more details.
                 ### YOUR CODE HERE
-                raise NotImplementedError
+                if 'm' not in state:
+                    state['m'] = torch.zeros_like(grad)
+                    state['v'] = torch.zeros_like(grad)
+                    state['t'] = 0
+                m = state['m']
+                v = state['v']
+                t = state['t']
+                alpha = group["lr"]
+                beta1 = group['betas'][0]
+                beta2 = group['betas'][1]
+                eps = group['eps']
+                weight_decay = group['weight_decay']
+
+                t = t + 1
+                m = beta1 * m + (1 - beta1) * grad
+                v = beta2 * v + (1 - beta2) * grad * grad
+                alpha_t = alpha * math.sqrt(1 - beta2**t) / (1 - beta1**t)
+                delta = alpha_t * m / (torch.sqrt(v) + eps)
+                p.data -= delta
+                if weight_decay != 0:
+                    p.data.mul_(1 - weight_decay*alpha)
+                state['m'] = m
+                state['v'] = v
+                state['t'] = t
 
 
         return loss

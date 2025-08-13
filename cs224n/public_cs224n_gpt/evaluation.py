@@ -62,6 +62,35 @@ def model_test_paraphrase(dataloader, model, device):
   return y_pred, sent_ids
 
 
+@torch.no_grad()
+def model_eval_sonnet(model,device,sonnet_loader,gold_path,temperature,top_p):
+  """
+  eval model performance during training on dev data
+  model: sonnet trained model
+  device: model device 
+  sonnet_loader : dataset for dev dataset
+  gold_path : gold answer for dev dataset
+  temperature : training temperature
+  top_p : training top_p
+  """
+  model.eval()
+  generated_sonnets = []
+  # get model output sonnets
+  for batch in sonnet_loader:
+    encoding = model.tokenizer(batch[1], return_tensors='pt', padding=True, truncation=True).to(device)
+    output = model.generate(encoding['input_ids'], temperature=temperature, top_p=top_p)
+    generated_sonnets.append(output[1])
+
+  # get gold sonnets
+  chrf = CHRF()
+  true_sonnets = [x[1] for x in SonnetsDataset(gold_path)]
+  max_len = min(len(true_sonnets), len(generated_sonnets))
+  true_sonnets = true_sonnets[:max_len]
+  generated_sonnets = generated_sonnets[:max_len]
+  chrf_score = chrf.corpus_score(generated_sonnets,[true_sonnets])
+  return float(chrf_score.score)
+
+
 def test_sonnet(
     test_path='predictions/generated_sonnets.txt',
     gold_path='data/TRUE_sonnets_held_out.txt'

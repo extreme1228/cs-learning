@@ -10,6 +10,7 @@ import csv
 
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from transformers import GPT2Tokenizer
 from sklearn.metrics import f1_score, accuracy_score
@@ -55,7 +56,7 @@ class GPT2SentimentClassifier(torch.nn.Module):
 
     ### TODO: Create any instance variables you need to classify the sentiment of BERT embeddings.
     ### YOUR CODE HERE
-    raise NotImplementedError
+    self.output_layer = nn.Linear(config.hidden_size,self.num_labels)
 
 
   def forward(self, input_ids, attention_mask):
@@ -65,7 +66,10 @@ class GPT2SentimentClassifier(torch.nn.Module):
     ###       HINT: You should consider what is an appropriate return value given that
     ###       the training loop currently uses F.cross_entropy as the loss function.
     ### YOUR CODE HERE
-    raise NotImplementedError
+    gpt_out = self.gpt(input_ids,attention_mask)
+    last_token = gpt_out['last_token']
+    logits = self.output_layer(last_token)
+    return logits
 
 
 

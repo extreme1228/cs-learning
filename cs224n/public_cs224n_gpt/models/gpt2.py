@@ -107,7 +107,9 @@ class GPT2Model(GPTPreTrainedModel):
       return hidden_state(s) * E^T
     """
     ### YOUR CODE HERE
-    raise NotImplementedError
+    # input_size (bz,seq,hid)
+    # output_size (bz,seq,voc)
+    return hidden_state @ self.word_embedding.weight.T
 
 
   @classmethod

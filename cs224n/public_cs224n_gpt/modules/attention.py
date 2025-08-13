@@ -40,8 +40,8 @@ class CausalSelfAttention(nn.Module):
 
     ## calc original att
     att = (query @ key.transpose(-2,-1)) * (1.0 / math.sqrt(d)) # (b,h,t,t)
-    ## apply mask on att
-    causal_mask = torch.tril(torch.ones(t,t)).view(1,1,t,t)
+    ## apply mask on att (remember to set tensor on the same device)
+    causal_mask = torch.tril(torch.ones(t,t,device=att.device)).view(1,1,t,t)
     att = att.masked_fill(causal_mask == 0 ,float('-inf'))
     att = att + attention_mask
     ## apply softmax on att
