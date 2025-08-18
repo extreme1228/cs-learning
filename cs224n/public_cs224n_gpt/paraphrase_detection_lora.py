@@ -31,6 +31,8 @@ from evaluation import model_eval_paraphrase, model_test_paraphrase
 from models.gpt2 import GPT2Model
 
 from optimizer import AdamW
+from transformers import AutoModelForCausalLM
+from peft import LoraConfig, TaskType, get_peft_model
 
 TQDM_DISABLE = False
 
@@ -46,20 +48,32 @@ def seed_everything(seed=11711):
 
 
 class ParaphraseGPT(nn.Module):
-  """Your GPT-2 Model designed for paraphrase detection."""
+  """Your GPT-2 Model designed for paraphrase detection with LoRA."""
 
   def __init__(self, args):
     super().__init__()
-    self.gpt = GPT2Model.from_pretrained(model=args.model_size, d=args.d, l=args.l, num_heads=args.num_heads)
-    self.paraphrase_detection_head = nn.Linear(args.d, 2)  # Paraphrase detection has two outputs: 1 (yes) or 0 (no).
+    # self.gpt = GPT2Model.from_pretrained(model=args.model_size, d=args.d, l=args.l, num_heads=args.num_heads)
+    #这里为方便套用peft库中的函数起见，改为直接调用官方的 GPT2 模型
+    self.model = AutoModelForCausalLM.from_pretrained(args.model_size)
+    
+    # 配置LoRA
+    peft_config = LoraConfig(
+        r=16,
+        lora_alpha=32,
+        lora_dropout=0.1,
+        task_type=TaskType.CAUSAL_LM,
+        target_modules=["c_attn", "c_proj", "c_fc"]  # GPT2的标准线性层名称
+    )
 
-    # By default, fine-tune the full model.
-    for param in self.gpt.parameters():
-      param.requires_grad = True
+    self.model_lora = get_peft_model(self.model, peft_config)
+    self.model_lora.print_trainable_parameters()
+    
+    # 分类头保持可训练
+    self.paraphrase_detection_head = nn.Linear(args.d, 2)  # Paraphrase detection has two outputs: 1 (yes) or 0 (no).
 
   def forward(self, input_ids, attention_mask):
     """
-    TODO: Predict the label of the token using the paraphrase_detection_head Linear layer.
+    Predict the label of the token using either the paraphrase_detection_head or direct token prediction.
 
     We structure the input as:
 
@@ -69,20 +83,36 @@ class ParaphraseGPT(nn.Module):
     token "yes" (byte pair encoding index of 8505) for examples that are paraphrases or "no" (byte pair encoding index
      of 3919) for examples that are not paraphrases.
     """
-
-    'Takes a batch of sentences and produces embeddings for them.'
-    ### YOUR CODE HERE
-    gpt_output = self.gpt(input_ids,attention_mask)
-    last_token = gpt_output['last_token']
-    # logits = self.paraphrase_detection_head(last_token)
-    logits = self.gpt.hidden_state_to_token(last_token)
+    # 使用LoRA包装的模型进行前向传播
+    # 官方GPT2模型返回的是ModelOutput对象，包含logits, past_key_values, hidden_states等
+    outputs = self.model_lora(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
+    
+    # 获取最后一层的隐藏状态
+    last_hidden_states = outputs.hidden_states[-1]  # [batch_size, seq_len, hidden_size]
+    
+    # 获取每个序列最后一个非padding token的位置
+    sequence_lengths = (attention_mask.sum(dim=1) - 1).long()  # [batch_size] 转换为long类型
+    
+    # 提取最后一个token的隐藏状态
+    last_token_hidden = last_hidden_states[torch.arange(last_hidden_states.shape[0]), sequence_lengths]
+    
+    # 有两种选择：
+    # 1. 使用分类头（推荐）
+    # logits = self.paraphrase_detection_head(last_token_hidden)
+    
+    # 2. 直接使用词汇表预测（用于预测"yes"/"no"）
+    # 从outputs.logits中获取对应位置的logits
+    logits = outputs.logits[torch.arange(outputs.logits.shape[0]), sequence_lengths]
+    
     return logits
 
 
 
 def save_model(model, optimizer, args, filepath):
+  # 保存LoRA适配器和分类头
   save_info = {
-    'model': model.state_dict(),
+    'lora_state_dict': model.model_lora.state_dict(),  # LoRA适配器参数
+    'classification_head': model.paraphrase_detection_head.state_dict(),  # 分类头参数
     'optim': optimizer.state_dict(),
     'args': args,
     'system_rng': random.getstate(),
@@ -92,6 +122,11 @@ def save_model(model, optimizer, args, filepath):
 
   torch.save(save_info, filepath)
   print(f"save the model to {filepath}")
+  
+  # 额外保存LoRA适配器（推荐方式）
+  lora_path = filepath.replace('.pt', '_lora_adapter')
+  model.model_lora.save_pretrained(lora_path)
+  print(f"LoRA adapter saved to {lora_path}")
 
 
 def train(args):
@@ -111,9 +146,11 @@ def train(args):
 
   args = add_arguments(args)
   model = ParaphraseGPT(args)
+
   model = model.to(device)
 
   lr = args.lr
+  # 只优化可训练的参数（LoRA适配器 + 分类头）
   optimizer = AdamW(model.parameters(), lr=lr, weight_decay=0.)
   best_dev_acc = 0
 
@@ -158,8 +195,20 @@ def test(args):
   device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
   saved = torch.load(args.filepath)
 
+  # 创建模型并加载LoRA适配器
   model = ParaphraseGPT(saved['args'])
-  model.load_state_dict(saved['model'])
+  
+  # 加载LoRA状态
+  if 'lora_state_dict' in saved:
+    model.model_lora.load_state_dict(saved['lora_state_dict'])
+  elif 'model' in saved:
+    # 兼容旧版本保存格式
+    model.load_state_dict(saved['model'])
+    
+  # 加载分类头
+  if 'classification_head' in saved:
+    model.paraphrase_detection_head.load_state_dict(saved['classification_head'])
+    
   model = model.to(device)
   model.eval()
   print(f"Loaded model to test from {args.filepath}")
@@ -234,7 +283,7 @@ def add_arguments(args):
 
 if __name__ == "__main__":
   args = get_args()
-  args.filepath = f'{args.epochs}-{args.lr}-paraphrase.pt'  # Save path.
+  args.filepath = f'{args.epochs}-{args.lr}-paraphrase_lora.pt'  # Save path.
   seed_everything(args.seed)  # Fix the seed for reproducibility.
   train(args)
   test(args)

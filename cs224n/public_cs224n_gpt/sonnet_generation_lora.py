@@ -27,6 +27,8 @@ from datasets import (
 from models.gpt2 import GPT2Model
 
 from optimizer import AdamW
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import LoraConfig, TaskType, get_peft_model
 
 TQDM_DISABLE = False
 
@@ -47,13 +49,23 @@ class SonnetGPT(nn.Module):
 
   def __init__(self, args):
     super().__init__()
-    self.gpt = GPT2Model.from_pretrained(model=args.model_size, d=args.d, l=args.l, num_heads=args.num_heads)
-    self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    # self.gpt = GPT2Model.from_pretrained(model=args.model_size, d=args.d, l=args.l, num_heads=args.num_heads)
+    # self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    self.model = AutoModelForCausalLM.from_pretrained(args.model_path)
+    self.tokenizer = AutoTokenizer.from_pretrained(args.model_path)
     self.tokenizer.pad_token = self.tokenizer.eos_token
-
+    peft_config = LoraConfig(
+        r=16,
+        lora_alpha=32,
+        lora_dropout=0.1,
+        task_type=TaskType.CAUSAL_LM,
+        target_modules=["c_attn", "c_proj", "c_fc"]  # GPT2的标准线性层名称
+    )
+    self.model_lora = get_peft_model(self.model, peft_config)
+    self.model_lora.print_trainable_parameters()
     # By default, fine-tune the full model. TODO: this is maybe not idea.
-    for param in self.gpt.parameters():
-      param.requires_grad = True
+    # for param in self.gpt.parameters():
+    #   param.requires_grad = True
 
   def forward(self, input_ids, attention_mask):
     """
@@ -62,16 +74,13 @@ class SonnetGPT(nn.Module):
     not just the distribution over next tokens for the last token!
     """
     ### YOUR CODE HERE
-    gpt_output = self.gpt(input_ids,attention_mask)
-    seq_token = gpt_output['last_hidden_state']
-    # logits = self.paraphrase_detection_head(last_token)
-    logits = self.gpt.hidden_state_to_token(seq_token)
+    output = self.model_lora(input_ids=input_ids,attention_mask=attention_mask,output_hidden_states=True)
+    logits = output.logits
     return logits
 
 
   def get_device(self):
-    for param in self.gpt.parameters():
-      return param.device
+    return self.model.device
 
   @torch.no_grad()
   def generate(self, encoding, temperature=0.7, top_p=0.9, max_length=128):
@@ -123,7 +132,7 @@ class SonnetGPT(nn.Module):
 
 def save_model(model, optimizer, args, filepath):
   save_info = {
-    'model': model.state_dict(),
+    'lora_state_dict': model.model_lora.state_dict(),
     'optim': optimizer.state_dict(),
     'args': args,
     'system_rng': random.getstate(),
@@ -133,6 +142,10 @@ def save_model(model, optimizer, args, filepath):
 
   torch.save(save_info, filepath)
   print(f"save the model to {filepath}")
+
+  lora_path = filepath.replace('.pt', '_lora_adapter')
+  model.model_lora.save_pretrained(lora_path)
+  print(f"LoRA adapter saved to {lora_path}")
 
 
 def train(args):
@@ -239,7 +252,11 @@ def test(args):
   saved = torch.load(args.filepath)
 
   model = SonnetGPT(saved['args'])
-  model.load_state_dict(saved['model'])
+  if 'lora_state_dict' in saved:
+    model.model_lora.load_state_dict(saved['lora_state_dict'])
+  elif 'model' in saved:
+    # 兼容旧版本保存格式
+    model.load_state_dict(saved['model'])
   model.to(device=device)
   model.eval()
   print(f"Loaded model to test from {args.filepath}")
@@ -285,6 +302,7 @@ def get_args():
 def add_arguments(args):
   """Add arguments that are deterministic on model size."""
   if args.model_size == 'gpt2':
+    args.model_path = 'gpt2'
     args.d = 768
     args.l = 12
     args.num_heads = 12
@@ -293,6 +311,7 @@ def add_arguments(args):
     args.l = 24
     args.num_heads = 16
   elif args.model_size == 'gpt2-large':
+    args.model_path = 'gpt2-large'
     args.d = 1280
     args.l = 36
     args.num_heads = 20
@@ -303,8 +322,8 @@ def add_arguments(args):
 
 if __name__ == "__main__":
   args = get_args()
-  args.filepath = f'{args.epochs}-{args.lr}-sonnet.pt'  # Save path.
+  args.filepath = f'{args.epochs}-{args.lr}-sonnet-lora.pt'  # Save path.
   seed_everything(args.seed)  # Fix the seed for reproducibility.
-  # train(args)
+  train(args)
   test(args)
   generate_submission_sonnets(args)

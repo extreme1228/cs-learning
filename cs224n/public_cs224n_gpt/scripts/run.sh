@@ -9,6 +9,9 @@ elif [ "$1" = "all" ]; then
     python3 classifier.py --epochs 10 --fine-tune-mode full-model --use_gpu --batch_size 64 --hidden_dropout_prob 0.3 --lr 1e-5
 
 # Paraphrase Detection Tasks
+elif [ "$1" = "para-cpu-lora" ]; then
+    echo "Running paraphrase detection with GPT-2 base model..."
+    python3 paraphrase_detection_lora.py --epochs 10 --batch_size 8 --lr 1e-5 --model_size gpt2
 elif [ "$1" = "para-cpu" ]; then
     echo "Running paraphrase detection with GPT-2 base model..."
     python3 paraphrase_detection.py --epochs 10 --batch_size 8 --lr 1e-5 --model_size gpt2
@@ -33,7 +36,11 @@ elif [ "$1" = "debug-sentiment" ]; then
 
 elif [ "$1" = "sonnet-cpu" ]; then
   echo "Running sonnet generation..."
-  python3 sonnet_generation.py --epochs 10 --temperature 1.2 --top_p 0.9 --batch_size 8 --lr 1e-5 --model_size gpt2
+  python3 sonnet_generation.py --epochs 20 --temperature 1.2 --top_p 0.9 --batch_size 8 --lr 1e-5 --model_size gpt2
+
+elif [ "$1" = "sonnet-cpu-lora" ]; then
+  echo "Running sonnet generation..."
+  python3 sonnet_generation_lora.py --epochs 1 --temperature 1.2 --top_p 0.9 --batch_size 8 --lr 1e-5 --model_size gpt2
 
 elif [ "$1" = "sonnet" ]; then
   echo "Running sonnet generation..."
