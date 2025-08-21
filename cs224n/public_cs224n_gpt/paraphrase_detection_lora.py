@@ -283,7 +283,7 @@ def add_arguments(args):
 
 if __name__ == "__main__":
   args = get_args()
-  args.filepath = f'{args.epochs}-{args.lr}-paraphrase_lora.pt'  # Save path.
+  args.filepath = f'{args.model_size}-{args.epochs}-{args.lr}-paraphrase_lora.pt'  # Save path.
   seed_everything(args.seed)  # Fix the seed for reproducibility.
   train(args)
   test(args)

@@ -206,7 +206,7 @@ def train(args):
 @torch.no_grad()
 def generate_submission_sonnets(args):
   device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
-  saved = torch.load(f'{args.epochs-1}_{args.filepath}', weights_only=False)
+  saved = torch.load(args.filepath, weights_only=False)
 
   model = SonnetGPT(saved['args'])
   model.load_state_dict(saved['model'])
@@ -303,7 +303,7 @@ def add_arguments(args):
 
 if __name__ == "__main__":
   args = get_args()
-  args.filepath = f'{args.epochs}-{args.lr}-sonnet.pt'  # Save path.
+  args.filepath = f'{args.model_size}-{args.epochs}-{args.lr}-sonnet.pt'  # Save path.
   seed_everything(args.seed)  # Fix the seed for reproducibility.
   # train(args)
   test(args)

@@ -112,6 +112,8 @@ def train(args):
   args = add_arguments(args)
   model = ParaphraseGPT(args)
   model = model.to(device)
+  if args.use_bf16:
+    model = model.to(torch.bfloat16)
 
   lr = args.lr
   optimizer = AdamW(model.parameters(), lr=lr, weight_decay=0.)
@@ -161,6 +163,8 @@ def test(args):
   model = ParaphraseGPT(saved['args'])
   model.load_state_dict(saved['model'])
   model = model.to(device)
+  if args.use_bf16:
+    model = model.to(torch.bfloat16)
   model.eval()
   print(f"Loaded model to test from {args.filepath}")
 
@@ -202,6 +206,7 @@ def get_args():
   parser.add_argument("--seed", type=int, default=11711)
   parser.add_argument("--epochs", type=int, default=10)
   parser.add_argument("--use_gpu", action='store_true')
+  parser.add_argument("--use_bf16", action='store_true')
 
   parser.add_argument("--batch_size", help='sst: 64, cfimdb: 8 can fit a 12GB GPU', type=int, default=8)
   parser.add_argument("--lr", type=float, help="learning rate", default=1e-5)
@@ -234,7 +239,7 @@ def add_arguments(args):
 
 if __name__ == "__main__":
   args = get_args()
-  args.filepath = f'{args.epochs}-{args.lr}-paraphrase.pt'  # Save path.
+  args.filepath = f'{args.model_size}-{args.epochs}-{args.lr}-paraphrase.pt'  # Save path.
   seed_everything(args.seed)  # Fix the seed for reproducibility.
   train(args)
   test(args)

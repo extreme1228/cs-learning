@@ -190,7 +190,8 @@ def model_eval(dataloader, model, device):
     b_mask = b_mask.to(device)
 
     logits = model(b_ids, b_mask)
-    logits = logits.detach().cpu().numpy()
+    # Convert to float32 first to handle BF16/FP16 compatibility with numpy
+    logits = logits.detach().float().cpu().numpy()
     preds = np.argmax(logits, axis=1).flatten()
 
     b_labels = b_labels.flatten()
@@ -219,7 +220,8 @@ def model_test_eval(dataloader, model, device):
     b_mask = b_mask.to(device)
 
     logits = model(b_ids, b_mask)
-    logits = logits.detach().cpu().numpy()
+    # Convert to float32 first to handle BF16/FP16 compatibility with numpy
+    logits = logits.detach().float().cpu().numpy()
     preds = np.argmax(logits, axis=1).flatten()
 
     y_pred.extend(preds)
