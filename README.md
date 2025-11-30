@@ -10,3 +10,4 @@
 * [LLM knowlege](https://zhuanlan.zhihu.com/p/654910335)
 * [RL from zero to PPO](https://medium.com/data-science/understand-reinforce-actor-critic-and-ppo-in-one-go-2569f520c066)
 * [Resoning Model(DeepSeek-r1)](https://sebastianraschka.com/blog/2025/understanding-reasoning-llms.html)
+* [Understanding Vision Language Model](https://medium.com/@akdemir_bahadir/vision-transformer-vit-how-it-works-and-how-to-build-it-in-pytorch-7a1cc79fbdbc)

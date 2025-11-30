@@ -106,7 +106,7 @@ class PretrainedConfig(object):
     with open(json_file, "r", encoding="utf-8") as reader:
       text = reader.read()
     return json.loads(text)
-
+  
   @classmethod
   def from_dict(cls, config_dict: Dict[str, Any], **kwargs) -> "PretrainedConfig":
     return_unused_kwargs = kwargs.pop("return_unused_kwargs", False)
